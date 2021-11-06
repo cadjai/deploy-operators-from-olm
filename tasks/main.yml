@@ -187,6 +187,8 @@
       set_fact:
         pkg_infovalues: "{{ pkg_infovalues | default([]) + [{'name': item.item.key, 'channel': item.stdout_lines[1], 'version': item.stdout_lines[0]}] }}"
       loop: "{{ operator_pkg_info.results }}"
+      when:
+        - not item.skipped is defined
       register: pkg_info_facts
 
 ################## Deploy Operator Subscription #####################
