@@ -212,8 +212,8 @@
         operator_catalog_name: "{{ item.value.catalog_name }}"
         operator_target_namespace: "{{ item.value.target_namespace }}"
         operator_deploy_namespace: "{{ item.value.deploy_namespace }}"
-        operator_sub_channel: "{{ pkg_infovalues[key_cnt].channel }}"
-        operator_csv_version: "{{ pkg_infovalues[key_cnt].version }}"
+        operator_sub_channel: "{{ operator_pkg_info.results[key_cnt].stdout_lines[1] }}"
+        operator_csv_version: "{{ operator_pkg_info.results[key_cnt].stdout_lines[0] }}"
       register: op_sub_copied
 
     - name: '{{ ansible_name_module }} | command:{{ openshift_cli }} apply | deploy operator subscription'
