@@ -53,6 +53,20 @@
         - item.value.patch_namespace_labels is defined and item.value.patch_namespace_labels != ""
       register: operator_ns_patched
 
+ ##################### Patch Namespace if applicable (e.g. add annotations) #####################
+    - name: '{{ ansible_name_module }} | command:{{ openshift_cli }} patch | namespace add annotations'
+      command: >
+        {{ openshift_cli }} patch namespace {{ item.value.deploy_namespace }} --type merge -p '{"metadata":{"annotations": {{ item.value.patch_namespace_annotations }} }}'
+      with_dict: "{{ operators_to_deploy }}"
+      loop_control:
+        index_var: key_cnt
+      when:
+        - item.key is defined and item.key != ""
+        - item.value.deploy is defined and item.value.deploy | bool
+        - item.value.patch_namespace is defined and item.value.patch_namespace | bool
+        - item.value.patch_namespace_annotations is defined and item.value.patch_namespace_annotations != ""
+      register: operator_ns_patched
+
 ################## Deploy RoleBinding if applicable #####################
     - name: '{{ ansible_name_module }} | command:{{ openshift_cli }} apply | create rolebinding'
       command: >
