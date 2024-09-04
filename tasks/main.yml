@@ -248,7 +248,7 @@
 
     - name: '{{ ansible_name_module }} | | get storage class if not provided'
       shell: >
-        {{ openshift_cli }} get storageclass --no-headers | grep -i "{{ storage_class_type | d('kubernetes.io/aws-ebs') }}" | awk '{print $1}'
+        {{ openshift_cli }} get storageclass -ojsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}{"\n"}' 
       register: default_sc
 
     - name: '{{ ansible_name_module }} | assert | Ensure storage exist for clusterlogging'
