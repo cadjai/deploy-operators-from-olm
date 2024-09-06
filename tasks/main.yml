@@ -188,7 +188,7 @@
 ################## Get Package Manifest info #####################
     - name: '{{ ansible_name_module }} | shell:{{ openshift_cli }} | Get package manifest for each operator'
       shell: >
-        {{ openshift_cli }} get packagemanifest {{ item.key }} -ojsonpath='{.status.channels[-1].currentCSV}{"\n"}{.status.defaultChannel}{"\n"}'
+        {{ openshift_cli }} get packagemanifest {{ item.key }} -ojson | jq '[.status.channels[] | {"channel": .name, "verion": .currentCSV}]' 
       with_dict: "{{ operators_to_deploy }}"
       loop_control:
         index_var: key_cnt
@@ -199,11 +199,17 @@
 
     - name: '{{ ansible_name_module }} | set_fact | Set array of package manifest info'
       set_fact:
-        pkg_infovalues: "{{ pkg_infovalues | default([]) + [{'name': item.item.key, 'channel': item.stdout_lines[1], 'version': item.stdout_lines[0]}] }}"
+        pkg_infovalues: "{{ pkg_infovalues | default([]) + [{'name': item.item.key, 'channels': item.stdout | from_json}] }}"
       loop: "{{ operator_pkg_info.results }}"
       when:
         - not item.skipped is defined
       register: pkg_info_facts
+
+    - name: '{{ ansible_name_module }} | set_fact | Set array of package manifest info'
+      set_fact:
+        operator_pkg_info_sorted: "{{ operator_pkg_info_sorted | default([]) + [{'name': item.name, 'package': item.channels | sort(attribute='version') | last }] }}"
+      loop: "{{ pkg_infovalues }}"
+      register: pkg_info_sorted_facts
 
 ################## Deploy Operator Subscription #####################
     - name: '{{ ansible_name_module }} | template | Copy Operator Subscripion to staging location'
@@ -226,8 +232,8 @@
         operator_catalog_name: "{{ item.value.catalog_name }}"
         operator_target_namespace: "{{ item.value.target_namespace }}"
         operator_deploy_namespace: "{{ item.value.deploy_namespace }}"
-        operator_sub_channel: "{{ operator_pkg_info.results[key_cnt].stdout_lines[1] }}"
-        operator_csv_version: "{{ operator_pkg_info.results[key_cnt].stdout_lines[0] }}"
+        operator_sub_channel: "{{ (operator_pkg_info_sorted | selectattr('name', 'equalto', item.key) | map(attribute='package') | map(attribute='channel'))[0] }}"
+        operator_csv_version: "{{ (operator_pkg_info_sorted | selectattr('name', 'equalto', item.key) | map(attribute='package') | map(attribute='version'))[0] }}"
       register: op_sub_copied
 
     - name: '{{ ansible_name_module }} | command:{{ openshift_cli }} apply | deploy operator subscription'
@@ -365,3 +371,17 @@
           when:
             - cm_files is defined and cm_files | length > 0
           register: op_cm_deployed
+
+##################### Run Extra tasks if applicable (e.g. enable odf console plugin) ##################### 
+    - name: '{{ ansible_name_module }} | Run extra tasks if applicable'
+      ansible.builtin.include_tasks: "{{ item.value.extra_tasks_file }}"
+      with_dict:
+        - "{{ operators_to_deploy }}"
+      when:
+        - item.key is defined and item.key != ""
+        - item.value.deploy is defined and item.value.deploy | bool
+        - item.value.run_extra_tasks is defined and item.value.run_extra_tasks | bool
+        - item.value.extra_tasks_file is defined and item.value.extra_tasks_file != ""
+      register: extra_tasks_applied
+
+
