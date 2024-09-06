@@ -371,3 +371,16 @@
           when:
             - cm_files is defined and cm_files | length > 0
           register: op_cm_deployed
+
+##################### Run Extra tasks if applicable (e.g. enable odf console plugin) ##################### 
+    - name: '{{ ansible_name_module }} | Run extra tasks if applicable'
+      ansible.builtin.include_tasks: "{{ item.value.extra_tasks_file }}"
+      with_dict:
+        - "{{ operators_to_deploy }}"
+      when:
+        - item.key is defined and item.key != ""
+        - item.value.deploy is defined and item.value.deploy | bool
+        - item.value.run_extra_tasks is defined and item.value.run_extra_tasks | bool
+        - item.value.extra_tasks_file is defined and item.value.extra_tasks_file != ""
+      register: extra_tasks_applied 
+
