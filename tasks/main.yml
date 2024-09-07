@@ -232,7 +232,7 @@
         operator_catalog_name: "{{ item.value.catalog_name }}"
         operator_target_namespace: "{{ item.value.target_namespace }}"
         operator_deploy_namespace: "{{ item.value.deploy_namespace }}"
-        operator_sub_channel: "{{ (operator_pkg_info_sorted | selectattr('name', 'equalto', item.key) | map(attribute='package') | map(attribute='channel'))[0] }}"
+        operator_sub_channel: "{{ item.value.sub_channel if item.value.sub_channel is defined and item.value.sub_channel != '' else (operator_pkg_info_sorted | selectattr('name', 'equalto', item.key) | map(attribute='package') | map(attribute='channel'))[0] }}"
         operator_csv_version: "{{ (operator_pkg_info_sorted | selectattr('name', 'equalto', item.key) | map(attribute='package') | map(attribute='version'))[0] }}"
       register: op_sub_copied
 
